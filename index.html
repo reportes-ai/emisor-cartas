@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.16</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.17</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.16</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.17</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -3363,12 +3363,13 @@ function openCartolaEmail(){
   const cc = ['comisiones@autofacilchile.cl',...ejMails].join(',');
   const subject = mesSubj + ' CARTOLA DE COMISIONES - ' + d.concName;
   const body = 'Estimados,\n' + d.concName + '\n\nJunto con saludar, adjunto cartola de comisiones de créditos cursados correspondiente al mes de ' + (d.mes||'') + ' por Autofácil Chile\n\nFacturar a nombre de:\n\nAUTOFACIL SPA\nRUT 76.545.638-K\nAV PRESIDENTE KENNEDY 5757 OF 1601 - LAS CONDES - SANTIAGO\nGIRO: SOCIEDADES DE INVERSIÓN Y RENTISTAS DE CAPITALES MOBILIARIOS EN GENERAL\n\nIMPORTANTE: Todas las facturas relacionados con comisiones deben ser enviados exclusivamente a la siguiente dirección: comisiones@autofacilchile.cl\n\n\nSaludos,\nÁrea Comisiones AutoFácil';
-  // Gmail Workspace compose URL (funciona con cuentas Google Workspace)
-  const gmailUrl = 'https://mail.google.com/mail/u/comisiones@autofacilchile.cl/?authuser=comisiones@autofacilchile.cl&view=cm'
+  const composeUrl = 'https://mail.google.com/mail/?view=cm'
     + '&to='   + encodeURIComponent(to)
     + '&cc='   + encodeURIComponent(cc)
     + '&su='   + encodeURIComponent(subject)
     + '&body=' + encodeURIComponent(body);
+  // AccountChooser fuerza la cuenta comisiones antes de abrir Gmail
+  const gmailUrl = 'https://accounts.google.com/AccountChooser?Email=comisiones%40autofacilchile.cl&continue=' + encodeURIComponent(composeUrl);
   window.open(gmailUrl, '_blank');
 }
 
