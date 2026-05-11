@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.18</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.19</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.18</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.19</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -1383,6 +1383,22 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   </div>
 </div>
 
+<!-- APROBACION CON EXCEPCIONES MODAL -->
+<div class="modal-overlay" id="aprobExcepOverlay">
+  <div class="modal" style="max-width:580px;width:95%">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <span style="font-size:24px">⚠️</span>
+      <h3 style="color:#E65100;margin:0">EXCEPCIONES PENDIENTES DE APROBACIÓN</h3>
+    </div>
+    <p style="font-size:12px;color:#546E7A;margin-bottom:12px">Esta carta tiene excepciones registradas al momento de su creación. Ingrese un comentario de aprobación para cada una antes de continuar:</p>
+    <div id="aprobExcepListado" style="margin-bottom:16px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('aprobExcepOverlay').classList.remove('active')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarAprobacionConExcepciones()">✓ Aprobar con comentarios</button>
+    </div>
+  </div>
+</div>
+
 <!-- CARTAS RECHAZADAS MODAL (for creator) -->
 <div class="modal-overlay" id="rejListModalOverlay">
   <div class="modal" style="max-width:700px;width:95%">
@@ -1504,6 +1520,11 @@ function mapCartaFromDB(r){
     fechaCorreccion: r.fecha_correccion, corregidoPor: r.corregido_por,
     otorgado: r.otorgado || false,
     fechaOtorgado: r.fecha_otorgado || null,
+    tasaCredito: r.tasa_credito || 0,
+    montoCreditoCLP: r.monto_credito_clp || 0,
+    montoCreditoUF: r.monto_credito_uf || 0,
+    excepciones: r.excepciones ? (typeof r.excepciones === 'string' ? JSON.parse(r.excepciones) : r.excepciones) : [],
+    excepcionesComentarios: r.excepciones_comentarios ? (typeof r.excepciones_comentarios === 'string' ? JSON.parse(r.excepciones_comentarios) : r.excepciones_comentarios) : null,
   };
 }
 
@@ -1531,6 +1552,11 @@ function mapCartaToDB(c){
     fecha_correccion: c.fechaCorreccion, corregido_por: c.corregidoPor,
     otorgado: c.otorgado || false,
     fecha_otorgado: c.fechaOtorgado || null,
+    tasa_credito: c.tasaCredito || 0,
+    monto_credito_clp: c.montoCreditoCLP || 0,
+    monto_credito_uf: c.montoCreditoUF || 0,
+    excepciones: c.excepciones ? JSON.stringify(c.excepciones) : null,
+    excepciones_comentarios: c.excepcionesComentarios ? JSON.stringify(c.excepcionesComentarios) : null,
   };
 }
 
@@ -1735,6 +1761,25 @@ function buildCorregirForm(c){
         <div class="field"><label>Saldo Precio</label><input type="text" id="cSaldo" value="$${Math.round(c.saldo).toLocaleString('es-CL')}" readonly style="color:#546E7A"></div>
       </div>
       <div class="form-row cols-3">
+        <div class="field"><label>Acreedor</label>
+          <select id="cAcreedor">
+            <option ${c.acreedor==='AUTOFIN'?'selected':''}>AUTOFIN</option>
+            <option ${c.acreedor==='AUTOFÁCIL'?'selected':''}>AUTOFÁCIL</option>
+            <option ${c.acreedor==='EUROCAPITAL'?'selected':''}>EUROCAPITAL</option>
+            <option ${c.acreedor==='UNIDAD DE CREDITO'?'selected':''}>UNIDAD DE CREDITO</option>
+          </select>
+        </div>
+        <div class="field"><label>Prenda Vehículo</label>
+          <select id="cPrenda">
+            <option value="SI" ${c.prenda==='SI'||!c.prenda?'selected':''}>SI</option>
+            <option value="NO" ${c.prenda==='NO'?'selected':''}>NO</option>
+          </select>
+        </div>
+        <div class="field"><label>Tasa Crédito (%)</label>
+          <input type="number" id="cTasaCredito" step="0.01" min="0" value="${c.tasaCredito||0}" placeholder="0.00">
+        </div>
+      </div>
+      <div class="form-row cols-3">
         <div class="field"><label>Concesionario</label><input type="text" id="cConcesionario" value="${c.concesionario}"></div>
         <div class="field"><label>RUT Concesionario</label><input type="text" id="cRutConc" value="${c.rutConc}"></div>
         <div class="field"><label>Vendedor</label><input type="text" id="cVendedor" value="${c.vendedor}"></div>
@@ -1810,6 +1855,9 @@ function grabarCorreccion(id){
   c.precioVenta = parseFloat(document.getElementById('cPrecioVenta').value)||c.precioVenta;
   c.pie = parseFloat(document.getElementById('cPie').value)||c.pie;
   c.saldo = rawSaldoCorr || c.saldo;
+  c.acreedor = document.getElementById('cAcreedor').value;
+  c.prenda = document.getElementById('cPrenda').value;
+  c.tasaCredito = parseFloat(document.getElementById('cTasaCredito').value)||c.tasaCredito||0;
   c.concesionario = document.getElementById('cConcesionario').value.trim();
   c.rutConc = document.getElementById('cRutConc').value.trim();
   c.vendedor = document.getElementById('cVendedor').value.trim();
@@ -2537,11 +2585,16 @@ function getExcepciones(){
 }
 
 let _cartaPendienteGrabar = null;
+let _excepcionesPendientes = null;
 
 function confirmarGrabarConExcepciones(){
   document.getElementById('excepcionesOverlay').classList.remove('active');
-  if(_cartaPendienteGrabar) ejecutarGrabarCarta(_cartaPendienteGrabar);
+  if(_cartaPendienteGrabar){
+    _cartaPendienteGrabar.excepciones = _excepcionesPendientes || [];
+    ejecutarGrabarCarta(_cartaPendienteGrabar);
+  }
   _cartaPendienteGrabar = null;
+  _excepcionesPendientes = null;
 }
 
 async function ejecutarGrabarCarta(carta){
@@ -4273,10 +4326,12 @@ async function grabarCarta(){
     ).join('');
     // Store carta temporarily
     _cartaPendienteGrabar = carta;
+    _excepcionesPendientes = excepciones;
     document.getElementById('excepcionesOverlay').classList.add('active');
     return;
   }
 
+  carta.excepciones = [];
   cartas.push(carta);
   saveData();
   // Sync to Supabase (await to ensure it's saved before showing success)
@@ -4337,7 +4392,7 @@ async function renderRevTable(){
   }
   tbody.innerHTML = pending.map(c=>`
     <tr>
-      <td>${c.opCarta}</td>
+      <td>${c.opCarta}${c.excepciones&&c.excepciones.length?` <span title="${c.excepciones.length} excepción(es)" style="color:#FF9800;font-size:11px;cursor:default">⚠️</span>`:''}</td>
       <td>${c.tipo}</td>
       <td>${c.cliente}</td>
       <td>${c.concesionario}</td>
@@ -4353,7 +4408,49 @@ async function renderRevTable(){
   `).join('');
 }
 
+let _aprobCartaId = null;
+
 async function aprobarCarta(id){
+  const c = cartas.find(x=>x.id===id);
+  if(!c) return;
+  if(c.excepciones && c.excepciones.length > 0){
+    _aprobCartaId = id;
+    const icons = {UF:'📅', TMC:'📋', TASA:'📈', PARTICIPACION:'💰', FINANCIERA:'🏦', 'FINANCIERA CRÍTICA':'🚨'};
+    document.getElementById('aprobExcepListado').innerHTML = c.excepciones.map((e,i)=>`
+      <div style="background:#FFF3E0;border-left:4px solid #FF9800;border-radius:4px;padding:10px 12px;margin-bottom:10px">
+        <div style="display:flex;gap:8px;margin-bottom:6px;font-size:12px">
+          <span>${icons[e.tipo]||'⚠️'}</span>
+          <div><strong style="color:#E65100">${e.tipo}:</strong> ${e.msg}</div>
+        </div>
+        <label style="font-size:11px;font-weight:600;color:#546E7A;display:block;margin-bottom:3px">Comentario de aprobación *</label>
+        <input type="text" id="excepComment_${i}" placeholder="Motivo por el cual se aprueba esta excepción..." style="width:100%;padding:6px 8px;border:1px solid #FFCC80;border-radius:4px;font-size:11px;box-sizing:border-box">
+      </div>`).join('');
+    document.getElementById('aprobExcepOverlay').classList.add('active');
+    return;
+  }
+  await ejecutarAprobacion(id, null);
+}
+
+async function confirmarAprobacionConExcepciones(){
+  const c = cartas.find(x=>x.id===_aprobCartaId);
+  if(!c) return;
+  const comentarios = c.excepciones.map((e,i)=>({
+    tipo: e.tipo, msg: e.msg,
+    comentario: (document.getElementById('excepComment_'+i)?.value||'').trim()
+  }));
+  if(comentarios.some(x=>!x.comentario)){
+    comentarios.forEach((x,i)=>{
+      const el = document.getElementById('excepComment_'+i);
+      if(el && !x.comentario) el.style.borderColor='#C62828';
+    });
+    return;
+  }
+  document.getElementById('aprobExcepOverlay').classList.remove('active');
+  await ejecutarAprobacion(_aprobCartaId, comentarios);
+  _aprobCartaId = null;
+}
+
+async function ejecutarAprobacion(id, comentarios){
   const c = cartas.find(x=>x.id===id);
   if(!c) return;
   c.status='APROBADA';
@@ -4361,6 +4458,7 @@ async function aprobarCarta(id){
   c.aprobadoPorNombre=currentUser.name;
   c.aprobadoPorInitials=currentUser.initials;
   c.fechaAprobacion=new Date().toISOString();
+  if(comentarios) c.excepcionesComentarios = comentarios;
   const ok = await dbUpsertCarta(c);
   if(!ok){ showModal('Error','No se pudo guardar la aprobación. Intenta nuevamente.'); return; }
   const fresh = await dbGetCartas();
