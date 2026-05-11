@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.9</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.10</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.9</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.10</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -3327,20 +3327,27 @@ function openCartolaSend(concName){
 function downloadCartolaPDF(){
   const d = window._cartolaSendData;
   if(!d) return;
-  const el = document.getElementById('cartolaPDF');
-  if(!el){ showToast('Error: no se encontró el contenido PDF'); return; }
-  const fname = parseMesSubject(d.mes) + ' CARTOLA COMISIONES - ' + d.concName + '.pdf';
-  const btn = document.getElementById('btnDownloadCartola');
-  if(btn){ btn.textContent='⏳ Generando...'; btn.disabled=true; }
-  html2pdf().set({
-    margin:[10,12,10,12],
-    filename: fname,
-    image:{type:'jpeg',quality:0.97},
-    html2canvas:{scale:2,useCORS:true},
-    jsPDF:{unit:'mm',format:'letter',orientation:'portrait'}
-  }).from(el).save().then(()=>{
-    if(btn){ btn.textContent='🖨 Descargar PDF'; btn.disabled=false; }
-  });
+  const {concName, g, mes, totalComis, totalAnul, totalPrep, subtotal, neto, iva} = d;
+  const fname = parseMesSubject(mes) + ' CARTOLA COMISIONES - ' + concName;
+  const pdfHtml = buildCartolaPDF(concName, g, mes, totalComis, totalAnul, totalPrep, subtotal, neto, iva);
+  const fullHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${fname}</title>
+<style>
+  @page{size:Letter;margin:12mm 15mm;}
+  *{box-sizing:border-box;font-family:Arial,sans-serif;}
+  body{margin:0;padding:0;}
+  #cartolaPDF{width:100%;}
+</style></head><body>
+${pdfHtml}
+<script>
+  window.onload=function(){
+    document.title='${fname.replace(/'/g,"\\'")}';
+    setTimeout(function(){window.print();},400);
+    window.addEventListener('afterprint',function(){window.close();});
+  };
+<\/script></body></html>`;
+  const win = window.open('','_blank');
+  if(win){ win.document.write(fullHTML); win.document.close(); }
+  else { showToast('Permite ventanas emergentes para generar el PDF'); }
 }
 
 function openCartolaEmail(){
@@ -3356,7 +3363,7 @@ function openCartolaEmail(){
   const ejMails = ejNombres.map(n=>{ const e=ejecutivos.find(x=>x.nombre===n); return e?e.mail:''; }).filter(Boolean);
   const cc = ['comisiones@autofacilchile.cl',...ejMails].join(',');
   const subject = mesSubj + ' CARTOLA DE COMISIONES - ' + d.concName;
-  const body = 'Estimados,\n\nJunto con saludar, adjunto cartola de comisiones de créditos cursados correspondiente al mes de ' + (d.mes||'') + ' por Autofácil Chile\n\nDATOS EMPRESA:\n\nAUTOFACIL SPA\nRUT 76.545.638-K\nAV PRESIDENTE KENNEDY 5757 OF 1601 - LAS CONDES - SANTIAGO\nGIRO: SOCIEDADES DE INVERSIÓN Y RENTISTAS DE CAPITALES MOBILIARIOS EN GENERAL\n\n\nSaludos,\nÁrea Comisiones AutoFácil';
+  const body = 'Estimados ' + d.concName + ',\nCorreo: ' + to + '\n\nJunto con saludar, adjunto cartola de comisiones de créditos cursados correspondiente al mes de ' + (d.mes||'') + ' por Autofácil Chile\n\nDATOS EMPRESA:\n\nAUTOFACIL SPA\nRUT 76.545.638-K\nAV PRESIDENTE KENNEDY 5757 OF 1601 - LAS CONDES - SANTIAGO\nGIRO: SOCIEDADES DE INVERSIÓN Y RENTISTAS DE CAPITALES MOBILIARIOS EN GENERAL\n\n\nSaludos,\nÁrea Comisiones AutoFácil';
   // Gmail Workspace compose URL (funciona con cuentas Google Workspace)
   const gmailUrl = 'https://mail.google.com/mail/?view=cm'
     + '&to='   + encodeURIComponent(to)
