@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.19</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.20</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.19</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.20</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -1379,6 +1379,23 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="document.getElementById('rejModalOverlay').classList.remove('active')">Cancelar</button>
       <button class="btn btn-danger" onclick="confirmRechazar()">Confirmar Rechazo</button>
+    </div>
+  </div>
+</div>
+
+<!-- VER EXCEPCIONES MODAL (Informes) -->
+<div class="modal-overlay" id="verExcepOverlay">
+  <div class="modal" style="max-width:560px;width:95%">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <span style="font-size:22px">⚠️</span>
+      <h3 style="color:#C62828;margin:0">EXCEPCIONES APROBADAS</h3>
+    </div>
+    <div style="font-size:12px;color:#546E7A;margin-bottom:14px">
+      Aprobado por: <strong id="verExcepAprobador">-</strong> &nbsp;|&nbsp; Fecha: <strong id="verExcepFecha">-</strong>
+    </div>
+    <div id="verExcepListado" style="margin-bottom:16px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('verExcepOverlay').classList.remove('active')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -4605,7 +4622,9 @@ async function renderInformes(){
       <td style="font-size:11px;white-space:nowrap">${fmtDateTime(c.fechaCreacion)}</td>
       <td style="font-size:12px">${c.aprobadoPorNombre||'-'}</td>
       <td style="font-size:11px;white-space:nowrap">${c.fechaAprobacion?fmtDateTime(c.fechaAprobacion):'-'}</td>
-      <td><span class="badge-status ${badgeClass}">${c.status}</span></td>
+      <td style="white-space:nowrap">
+        <span class="badge-status ${badgeClass}">${c.status}</span>${c.status==='APROBADA'&&c.excepciones&&c.excepciones.length?` <button onclick="verExcepciones(${c.id})" title="${c.excepciones.length} excepción(es) aprobada(s)" style="background:#C62828;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;cursor:pointer;margin-left:3px;padding:0;line-height:18px;vertical-align:middle">E</button>`:''}
+      </td>
       <td style="text-align:center">
         ${c.status==='APROBADA' ? `<label style="display:inline-flex;flex-direction:column;align-items:center;cursor:pointer;gap:2px">
             <input type="checkbox" class="otorgado-chk" data-carta-id="${c.id}" ${c.otorgado?'checked':''}
@@ -4677,26 +4696,48 @@ function deleteSelectedCartas(){
   renderInformes();
 }
 
+function verExcepciones(id){
+  const c = cartas.find(x=>x.id===id);
+  if(!c || !c.excepciones || !c.excepciones.length) return;
+  const icons = {UF:'📅', TMC:'📋', TASA:'📈', PARTICIPACION:'💰', FINANCIERA:'🏦', 'FINANCIERA CRÍTICA':'🚨'};
+  const coments = c.excepcionesComentarios || [];
+  document.getElementById('verExcepListado').innerHTML = c.excepciones.map((e,i)=>{
+    const com = coments.find(x=>x.tipo===e.tipo) || coments[i];
+    return `<div style="background:#FFF3E0;border-left:4px solid #FF9800;border-radius:4px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:12px;margin-bottom:5px">${icons[e.tipo]||'⚠️'} <strong style="color:#E65100">${e.tipo}:</strong> ${e.msg}</div>
+      <div style="font-size:11px;color:#546E7A"><strong>Comentario de aprobación:</strong> ${com?.comentario||'<em>(sin comentario)</em>'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('verExcepAprobador').textContent = c.aprobadoPorNombre||'-';
+  document.getElementById('verExcepFecha').textContent = c.fechaAprobacion ? fmtDateTime(c.fechaAprobacion) : '-';
+  document.getElementById('verExcepOverlay').classList.add('active');
+}
+
 function exportInformesExcel(){
   const list = filteredInformes();
   if(!list.length){ showModal('Sin datos','No hay cartas para exportar con los filtros actuales.'); return; }
   
   // Build CSV with BOM for Excel UTF-8 compatibility
-  const headers = ['N° Op Carta','Tipo','Cliente','RUT Cliente','Concesionario','RUT Conc','Ejecutivo','Creador','Fecha Creación','Aprobador','Fecha Aprobación','Precio Venta','Pie','Saldo','Plazo','Marca','Modelo','Año','Patente','Part. Neto','Part. IVA','Part. Bruto','Estado'];
-  const rows = list.map(c => [
-    c.opCarta, c.tipo, c.cliente, c.rutCliente, c.concesionario, c.rutConc,
-    c.ejecutivoNombre, c.creadoPorNombre,
-    fmtDateTime(c.fechaCreacion),
-    c.aprobadoPorNombre||'', c.fechaAprobacion?fmtDateTime(c.fechaAprobacion):'',
-    c.precioVenta||0, c.pie||0, c.saldo||0, c.plazo||'',
-    c.marca||'', c.modelo||'', c.anio||'', c.patente||'',
-    c.partNeto||0, c.partIVA||0, c.partBruto||0, c.status
-  ].map(v => {
-    const str = String(v);
-    return str.includes(',') || str.includes('"') || str.includes('\n') 
-      ? '"' + str.replace(/"/g,'""') + '"' 
-      : str;
-  }));
+  const headers = ['N° Op Carta','Tipo','Cliente','RUT Cliente','Concesionario','RUT Conc','Ejecutivo','Creador','Fecha Creación','Aprobador','Fecha Aprobación','Precio Venta','Pie','Saldo','Plazo','Marca','Modelo','Año','Patente','Part. Neto','Part. IVA','Part. Bruto','Estado','Excepciones','Comentarios Aprobación'];
+  const rows = list.map(c => {
+    const excTxt = (c.excepciones||[]).map(e=>`[${e.tipo}] ${e.msg}`).join(' | ');
+    const comTxt = (c.excepcionesComentarios||[]).map(e=>`[${e.tipo}] ${e.comentario||''}`).join(' | ');
+    return [
+      c.opCarta, c.tipo, c.cliente, c.rutCliente, c.concesionario, c.rutConc,
+      c.ejecutivoNombre, c.creadoPorNombre,
+      fmtDateTime(c.fechaCreacion),
+      c.aprobadoPorNombre||'', c.fechaAprobacion?fmtDateTime(c.fechaAprobacion):'',
+      c.precioVenta||0, c.pie||0, c.saldo||0, c.plazo||'',
+      c.marca||'', c.modelo||'', c.anio||'', c.patente||'',
+      c.partNeto||0, c.partIVA||0, c.partBruto||0, c.status,
+      excTxt, comTxt
+    ].map(v => {
+      const str = String(v);
+      return str.includes(',') || str.includes('"') || str.includes('\n')
+        ? '"' + str.replace(/"/g,'""') + '"'
+        : str;
+    });
+  });
   
   const csv = '\uFEFF' + [headers, ...rows].map(r=>r.join(';')).join('\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
