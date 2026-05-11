@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.12</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.13</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.12</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.13</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -1059,10 +1059,9 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
         </div>
         <button onclick="document.getElementById('cartolaSendOverlay').classList.remove('active')" style="background:rgba(255,255,255,0.2);border:none;color:white;border-radius:20px;padding:4px 14px;cursor:pointer;font-size:12px">✕ Cerrar</button>
       </div>
-      <div style="background:#F5F5F5;padding:10px 16px;display:flex;gap:10px;align-items:center;border-bottom:1px solid #E0E0E0;flex-wrap:wrap">
-        <button class="btn btn-primary" id="btnDownloadCartola" onclick="downloadCartolaPDF()">🖨 Descargar PDF</button>
-        <button class="btn btn-success" onclick="openCartolaEmail()">📧 Abrir en Correo</button>
-        <span style="font-size:11px;color:#78909C">Descarga el PDF y adjúntalo al correo antes de enviar.</span>
+      <div style="background:#F5F5F5;padding:10px 16px;display:flex;gap:12px;align-items:center;border-bottom:1px solid #E0E0E0;flex-wrap:wrap">
+        <button class="btn btn-success" id="btnEnviarCartola" onclick="enviarCartolaCompleto()" style="font-size:13px;padding:9px 22px">📧 Enviar Cartola</button>
+        <span style="font-size:11px;color:#78909C">El PDF se descargará en Descargas. Gmail se abrirá pre-llenado — solo adjunta el archivo y envía.</span>
       </div>
       <div style="padding:20px;background:#ccc;overflow-y:auto;max-height:68vh">
         <div id="cartolaSendPDFArea"></div>
@@ -3371,6 +3370,11 @@ function openCartolaEmail(){
     + '&su='   + encodeURIComponent(subject)
     + '&body=' + encodeURIComponent(body);
   window.open(gmailUrl, '_blank');
+}
+
+function enviarCartolaCompleto(){
+  downloadCartolaPDF();
+  setTimeout(function(){ openCartolaEmail(); }, 800);
 }
 
 // ========== PREPAGO / ANULACION ==========
