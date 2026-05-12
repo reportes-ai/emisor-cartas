@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.23</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.24</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.23</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.24</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -246,7 +246,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
       <button class="menu-btn blue" onclick="showPage('impPage')">IMPRESIÓN DE CARTA DE APROBACIÓN</button>
       <button class="menu-btn blue" onclick="showPage('informesPage')">INFORMES CARTAS DE APROBACIÓN</button>
       <button class="menu-btn blue" onclick="showPage('cartolasPage')">EMISIÓN DE CARTOLAS</button>
-      <button class="menu-btn blue" onclick="alert('Módulo Cartolas en desarrollo')">IMPRESIÓN DE CARTOLAS</button>
+      <button class="menu-btn blue" onclick="showPage('impCartolasPage')">IMPRESIÓN DE CARTOLAS</button>
       <button class="menu-btn green" id="btnDealers" onclick="showDealersPage()">ADMINISTRACIÓN DEALERS</button>
       <button class="menu-btn green" id="btnCarga" onclick="showPage('cargaPage')">MANTENEDOR AUTOMÓVILES</button>
       <button class="menu-btn green" id="btnManten" onclick="showPage('mantenPage')">MANTENCIÓN USUARIOS</button>
@@ -1046,6 +1046,33 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
         <button class="btn btn-secondary" onclick="document.getElementById('cartolaEditOverlay').classList.remove('active')">Cancelar</button>
         <button class="btn btn-success" onclick="saveCartolaEdit()">Guardar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- IMPRESION / REGISTRO DE CARTOLAS ENVIADAS -->
+  <div id="impCartolasPage" class="page no-print">
+    <div class="page-title">
+      <button class="btn-back" onclick="showPage('menuPage')">← Menú</button>
+      Registro de Cartolas Enviadas
+    </div>
+    <div class="form-card" style="padding:0;overflow:hidden">
+      <table class="data-table" id="impCartolasTable">
+        <thead>
+          <tr>
+            <th>Correlativo</th>
+            <th>Fecha Envío</th>
+            <th>Concesionario</th>
+            <th>Período</th>
+            <th style="text-align:right">Neto</th>
+            <th style="text-align:right">IVA</th>
+            <th style="text-align:right">Total Bruto</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="impCartolasBody">
+          <tr><td colspan="8" style="text-align:center;color:#888;padding:20px">Cargando...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -2915,6 +2942,16 @@ async function toggleOtorgado(cartaId, checked){
   showToast(checked ? '✓ Otorgado - agregado a Cartolas' : 'Desmarcado - removido de Cartolas');
 }
 
+async function loadCartolasEnviadas(){
+  try {
+    const stored = await dbGetParam('cartolas_enviadas');
+    if(stored && stored !== 'null'){
+      const data = JSON.parse(stored);
+      if(Array.isArray(data)) localStorage.setItem('af_cartolas_enviadas', stored);
+    }
+  } catch(e){ console.warn('cartolas_enviadas load failed:', e); }
+}
+
 async function loadCartolasPage(){
   // Load cartolas from Supabase param
   try {
@@ -2926,6 +2963,8 @@ async function loadCartolasPage(){
       }
     }
   } catch(e){ console.warn('cartolas load failed:', e); }
+  // Load cartolas enviadas too
+  await loadCartolasEnviadas();
   
   const cartolas = getCartolasData();
   const meses = [...new Set(cartolas.map(r => r.mesDisplay).filter(Boolean))].sort();
@@ -3177,9 +3216,13 @@ function renderRevisionCartolas(){
   }
 
   const hoje = new Date().toLocaleDateString('es-CL');
+  const enviadas = getCartolasEnviadas();
 
   document.getElementById('revisionCartolasList').innerHTML = keys.map(conc => {
     const g = grouped[conc];
+    // Determinar mes real del grupo
+    const mesGrupo = (g.comisiones[0] || g.anulaciones[0] || g.prepagos[0] || {}).mesDisplay || mesFilt;
+    const yaEnviada = enviadas.find(e => e.concesionario === conc && e.mes === mesGrupo);
     // Only "A PAGAR" sums; "A DESCONTAR" subtracts (PENDIENTE is informative only)
     const totalComis = g.comisiones.filter(r => r.estadoComision === 'A PAGAR').reduce((s,r) => s + (r.comisionBruta||0), 0);
     const totalAnul = g.anulaciones.filter(r => r.estadoComision === 'A DESCONTAR' || r.estadoComision === 'A PAGAR').reduce((s,r) => s + (r.comisionBruta||0), 0);
@@ -3240,7 +3283,13 @@ function renderRevisionCartolas(){
           </div>
           <div style="display:flex;align-items:center;gap:10px">
             <div style="font-size:11px;opacity:0.8">Fecha de Emisión: ${hoje}</div>
-            <button onclick="openCartolaSend('${conc.replace(/'/g,String.fromCharCode(39)).replace(/\\/g,'\\\\')}')" style="background:#43A047;border:none;color:white;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">📧 Enviar Cartola</button>
+            ${yaEnviada
+              ? `<div style="display:flex;align-items:center;gap:8px">
+                  <span style="background:#1B5E20;color:#fff;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:700">✓ CARTOLA ENVIADA — ${yaEnviada.correlativo}</span>
+                  <button onclick="anularEnvioCartola(${yaEnviada.id})" style="background:#C62828;border:none;color:white;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">↩ Anular Envío</button>
+                </div>`
+              : `<button onclick="openCartolaSend('${conc.replace(/'/g,String.fromCharCode(39)).replace(/\\/g,'\\\\')}')";  style="background:#43A047;border:none;color:white;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">📧 Enviar Cartola</button>`
+            }
           </div>
         </div>
       </div>
@@ -3275,6 +3324,64 @@ function renderRevisionCartolas(){
       </div>
     </div>`;
   }).join('');
+}
+
+// ========== CARTOLAS ENVIADAS ==========
+function getCartolasEnviadas(){
+  return JSON.parse(localStorage.getItem('af_cartolas_enviadas') || '[]');
+}
+function saveCartolasEnviadas(data){
+  localStorage.setItem('af_cartolas_enviadas', JSON.stringify(data));
+  dbSetParam('cartolas_enviadas', JSON.stringify(data));
+}
+function getNextCorrelativoEnvio(mesDisplay){
+  const parsed = parseMesSubject(mesDisplay); // "2026.05"
+  const parts = parsed.split('.');
+  const year = parts[0] || '';
+  const month = parts[1] || '';
+  const prefix = month + year; // "052026"
+  const enviadas = getCartolasEnviadas();
+  const same = enviadas.filter(e => e.correlativo.startsWith(prefix));
+  return prefix + String(same.length + 1).padStart(3, '0');
+}
+function renderImpCartolas(){
+  const enviadas = getCartolasEnviadas();
+  const tbody = document.getElementById('impCartolasBody');
+  if(!tbody) return;
+  if(!enviadas.length){
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay cartolas enviadas aún.</td></tr>';
+    return;
+  }
+  const sorted = [...enviadas].sort((a,b) => new Date(b.fechaEnvio) - new Date(a.fechaEnvio));
+  tbody.innerHTML = sorted.map(e => `
+    <tr>
+      <td style="font-weight:700;color:#1565C0;font-size:12px">${e.correlativo}</td>
+      <td style="font-size:11px;white-space:nowrap">${fmtDateTime(e.fechaEnvio)}</td>
+      <td style="font-size:12px">${e.concesionario}</td>
+      <td style="font-size:12px">${e.mes}</td>
+      <td style="text-align:right;font-size:11px">${fmtCLP(e.neto)}</td>
+      <td style="text-align:right;font-size:11px">${fmtCLP(e.iva)}</td>
+      <td style="text-align:right;font-weight:700;font-size:12px">${fmtCLP(e.total)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="verCartolaEnviada(${e.id})">Ver Cartola</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:4px 10px;margin-left:4px" onclick="anularEnvioCartola(${e.id})">↩ Anular</button>
+      </td>
+    </tr>`).join('');
+}
+function verCartolaEnviada(id){
+  const e = getCartolasEnviadas().find(x => x.id === id);
+  if(!e || !e.snapshotHTML){ showToast('No se encontró la cartola guardada'); return; }
+  const win = window.open('', '_blank');
+  if(win){ win.document.write(e.snapshotHTML); win.document.close(); }
+  else showToast('Permite ventanas emergentes para ver la cartola');
+}
+function anularEnvioCartola(id){
+  if(!confirm('¿Anular el envío de esta cartola? Quedará nuevamente disponible para reenviar.')) return;
+  const enviadas = getCartolasEnviadas().filter(e => e.id !== id);
+  saveCartolasEnviadas(enviadas);
+  renderImpCartolas();
+  renderRevisionCartolas();
+  showToast('✓ Envío anulado correctamente');
 }
 
 // ========== CARTOLA PDF & EMAIL ==========
@@ -3451,8 +3558,41 @@ function openCartolaEmail(){
 }
 
 function enviarCartolaCompleto(){
+  const d = window._cartolaSendData;
+  if(!d) return;
+
+  // Generar correlativo
+  const correlativo = getNextCorrelativoEnvio(d.mes);
+
+  // Snapshot HTML de la cartola para guardarla
+  const pdfBody = buildCartolaPDF(d.concName, d.g, d.mes, d.totalComis, d.totalAnul, d.totalPrep, d.subtotal, d.neto, d.iva);
+  const snapshotHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${correlativo} - ${d.concName}</title></head><body style="margin:0;padding:0">${pdfBody}</body></html>`;
+
+  // Guardar registro
+  const nuevaEnviada = {
+    id: Date.now(),
+    correlativo,
+    fechaEnvio: new Date().toISOString(),
+    concesionario: d.concName,
+    rutConc: d.g.rutConc || '',
+    mes: d.mes,
+    neto: d.neto,
+    iva: d.iva,
+    total: d.subtotal,
+    snapshotHTML
+  };
+  const enviadas = getCartolasEnviadas();
+  enviadas.push(nuevaEnviada);
+  saveCartolasEnviadas(enviadas);
+
+  // PDF + Email
   downloadCartolaPDF();
   setTimeout(function(){ openCartolaEmail(); }, 800);
+
+  // Cerrar modal y refrescar revisión
+  document.getElementById('cartolaSendOverlay').classList.remove('active');
+  renderRevisionCartolas();
+  showToast('✓ Cartola enviada — Correlativo: ' + correlativo);
 }
 
 // ========== PREPAGO / ANULACION ==========
@@ -3913,6 +4053,7 @@ function showPage(id){
   if(id==='dealersPage') { dealerPage=1; filterDealers(); }
   if(id==='rechazadasPage') renderRechazadasTable();
   if(id==='cartolasPage'){ loadCartolasPage(); }
+  if(id==='impCartolasPage'){ loadCartolasEnviadas().then(()=>renderImpCartolas()); }
 }
 
 // ========== TIPO CARTA ==========
