@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.21</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.22</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.21</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.22</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -2407,8 +2407,15 @@ function openMantenedorUF(){
   } else {
     ufEl.textContent = 'Sin datos cargados';
   }
-  const lastUF = localStorage.getItem('af_uf_upload_date');
-  document.getElementById('ufLastUpdate').textContent = lastUF ? 'Actualizado: ' + lastUF : '';
+  const ufData = JSON.parse(localStorage.getItem('af_uf_data') || '{}');
+  const ufKeys = Object.keys(ufData).sort();
+  if(ufKeys.length){
+    const fmt = k => new Date(k+'T12:00:00').toLocaleDateString('es-CL');
+    document.getElementById('ufLastUpdate').textContent = 'Actualizado: ' + fmt(ufKeys[0]) + ' hasta el ' + fmt(ufKeys[ufKeys.length-1]) + ' (' + ufKeys.length + ' valores)';
+  } else {
+    const lastUF = localStorage.getItem('af_uf_upload_date');
+    document.getElementById('ufLastUpdate').textContent = lastUF ? 'Actualizado: ' + lastUF : '';
+  }
 
   // Load saved tasas
   const tasas = JSON.parse(localStorage.getItem('af_tasas') || '{}');
@@ -2515,7 +2522,9 @@ function loadUFcsv(input){
       localStorage.setItem('af_uf_upload_date', now + ' (' + Object.keys(ufMap).length + ' valores)');
       dbSetParam('uf_data', JSON.stringify(ufMap));
       document.getElementById('ufUploadStatus').innerHTML = '<span style="color:#2E7D32">✓ ' + Object.keys(ufMap).length + ' valores cargados</span>';
-      document.getElementById('ufLastUpdate').textContent = 'Actualizado: ' + now;
+      const ufKeys2 = Object.keys(ufMap).sort();
+      const fmt2 = k => new Date(k+'T12:00:00').toLocaleDateString('es-CL');
+      document.getElementById('ufLastUpdate').textContent = ufKeys2.length ? 'Actualizado: ' + fmt2(ufKeys2[0]) + ' hasta el ' + fmt2(ufKeys2[ufKeys2.length-1]) + ' (' + ufKeys2.length + ' valores)' : 'Actualizado: ' + now;
       // Refresh UF display
       openMantenedorUF();
       showToast('✓ UF actualizada: ' + Object.keys(ufMap).length + ' valores');
