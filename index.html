@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.20</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.21</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.20</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.21</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -4415,7 +4415,9 @@ async function renderRevTable(){
       <td>${c.concesionario}</td>
       <td>${c.creadoPorNombre}</td>
       <td>${fmtDateTime(c.fechaCreacion)}</td>
-      <td><span class="badge-status badge-pendiente">PENDIENTE</span></td>
+      <td style="white-space:nowrap">
+        <span class="badge-status badge-pendiente">PENDIENTE</span>${c.excepciones&&c.excepciones.length?` <button onclick="verExcepciones(${c.id})" title="${c.excepciones.length} excepción(es) registrada(s)" style="background:#C62828;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;cursor:pointer;margin-left:3px;padding:0;line-height:18px;vertical-align:middle">E</button>`:''}
+      </td>
       <td>
         <button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="verCarta(${c.id},true)">Ver</button>
         <button class="btn btn-success" style="font-size:11px;padding:4px 10px;margin-left:4px" onclick="aprobarCarta(${c.id})">Aprobar</button>
