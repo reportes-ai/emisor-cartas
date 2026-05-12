@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.24</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.25</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.24</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.25</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -246,7 +246,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
       <button class="menu-btn blue" onclick="showPage('impPage')">IMPRESIÓN DE CARTA DE APROBACIÓN</button>
       <button class="menu-btn blue" onclick="showPage('informesPage')">INFORMES CARTAS DE APROBACIÓN</button>
       <button class="menu-btn blue" onclick="showPage('cartolasPage')">EMISIÓN DE CARTOLAS</button>
-      <button class="menu-btn blue" onclick="showPage('impCartolasPage')">IMPRESIÓN DE CARTOLAS</button>
+      <button class="menu-btn blue" onclick="showPage('impCartolasPage')">CARTOLAS ENVIADAS</button>
       <button class="menu-btn green" id="btnDealers" onclick="showDealersPage()">ADMINISTRACIÓN DEALERS</button>
       <button class="menu-btn green" id="btnCarga" onclick="showPage('cargaPage')">MANTENEDOR AUTOMÓVILES</button>
       <button class="menu-btn green" id="btnManten" onclick="showPage('mantenPage')">MANTENCIÓN USUARIOS</button>
@@ -1053,7 +1053,25 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div id="impCartolasPage" class="page no-print">
     <div class="page-title">
       <button class="btn-back" onclick="showPage('menuPage')">← Menú</button>
-      Registro de Cartolas Enviadas
+      Cartolas Enviadas
+    </div>
+    <div class="form-card" style="margin-bottom:10px">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+        <div class="field" style="flex:2;min-width:200px">
+          <label>Buscar</label>
+          <input type="text" id="impCartolasSearch" placeholder="Correlativo, concesionario, período..." oninput="renderImpCartolas()" style="width:100%">
+        </div>
+        <div class="field" style="flex:1;min-width:150px">
+          <label>Período</label>
+          <select id="impCartolasPeriodo" onchange="renderImpCartolas()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <button class="btn btn-secondary" onclick="document.getElementById('impCartolasSearch').value='';document.getElementById('impCartolasPeriodo').value='';renderImpCartolas()">Limpiar</button>
+        </div>
+      </div>
+      <div id="impCartolasCount" style="font-size:11px;color:#546E7A;margin-top:6px"></div>
     </div>
     <div class="form-card" style="padding:0;overflow:hidden">
       <table class="data-table" id="impCartolasTable">
@@ -3348,12 +3366,36 @@ function renderImpCartolas(){
   const enviadas = getCartolasEnviadas();
   const tbody = document.getElementById('impCartolasBody');
   if(!tbody) return;
-  if(!enviadas.length){
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay cartolas enviadas aún.</td></tr>';
+
+  // Poblar select de períodos
+  const periodoSel = document.getElementById('impCartolasPeriodo');
+  if(periodoSel){
+    const periodos = [...new Set(enviadas.map(e=>e.mes).filter(Boolean))].sort();
+    const prev = periodoSel.value;
+    periodoSel.innerHTML = '<option value="">Todos</option>' + periodos.map(p=>`<option ${p===prev?'selected':''}>${p}</option>`).join('');
+  }
+
+  // Aplicar filtros
+  const q = (document.getElementById('impCartolasSearch')?.value || '').toLowerCase().trim();
+  const periodo = document.getElementById('impCartolasPeriodo')?.value || '';
+  const sorted = [...enviadas].sort((a,b) => new Date(b.fechaEnvio) - new Date(a.fechaEnvio));
+  const list = sorted.filter(e => {
+    if(periodo && e.mes !== periodo) return false;
+    if(q){
+      const txt = [e.correlativo, e.concesionario, e.mes, fmtCLP(e.total), fmtDateTime(e.fechaEnvio)].join(' ').toLowerCase();
+      if(!txt.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const countEl = document.getElementById('impCartolasCount');
+  if(countEl) countEl.textContent = list.length + ' cartola(s) encontrada(s)';
+
+  if(!list.length){
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay cartolas enviadas con los filtros seleccionados.</td></tr>';
     return;
   }
-  const sorted = [...enviadas].sort((a,b) => new Date(b.fechaEnvio) - new Date(a.fechaEnvio));
-  tbody.innerHTML = sorted.map(e => `
+  tbody.innerHTML = list.map(e => `
     <tr>
       <td style="font-weight:700;color:#1565C0;font-size:12px">${e.correlativo}</td>
       <td style="font-size:11px;white-space:nowrap">${fmtDateTime(e.fechaEnvio)}</td>
