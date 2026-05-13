@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.26</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.27</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.26</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.27</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -1055,42 +1055,102 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
       <button class="btn-back" onclick="showPage('menuPage')">← Menú</button>
       Cartolas Enviadas
     </div>
-    <div class="form-card" style="margin-bottom:10px">
-      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
-        <div class="field" style="flex:2;min-width:200px">
-          <label>Buscar</label>
-          <input type="text" id="impCartolasSearch" placeholder="Correlativo, concesionario, período..." oninput="renderImpCartolas()" style="width:100%">
-        </div>
-        <div class="field" style="flex:1;min-width:150px">
-          <label>Período</label>
-          <select id="impCartolasPeriodo" onchange="renderImpCartolas()">
-            <option value="">Todos</option>
-          </select>
-        </div>
-        <div>
-          <button class="btn btn-secondary" onclick="document.getElementById('impCartolasSearch').value='';document.getElementById('impCartolasPeriodo').value='';renderImpCartolas()">Limpiar</button>
-        </div>
-      </div>
-      <div id="impCartolasCount" style="font-size:11px;color:#546E7A;margin-top:6px"></div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;border-bottom:2px solid #E0E0E0;margin-bottom:14px">
+      <button id="impTabBtn1" onclick="switchImpCartolaTab(1)" style="padding:9px 22px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:700;color:#0141A2;border-bottom:3px solid #0141A2;margin-bottom:-2px;transition:all 0.15s">Cartolas Enviadas</button>
+      <button id="impTabBtn2" onclick="switchImpCartolaTab(2)" style="padding:9px 22px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:700;color:#546E7A;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s">Estado Cartolas</button>
+      <button id="impTabBtn3" onclick="switchImpCartolaTab(3)" style="padding:9px 22px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:700;color:#546E7A;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s">Resumen Cartolas</button>
     </div>
-    <div class="form-card" style="padding:0;overflow:hidden">
-      <table class="data-table" id="impCartolasTable">
-        <thead>
-          <tr>
-            <th>Correlativo</th>
-            <th>Fecha Envío</th>
-            <th>Concesionario</th>
-            <th>Período</th>
-            <th style="text-align:right">Neto</th>
-            <th style="text-align:right">IVA</th>
-            <th style="text-align:right">Total Bruto</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="impCartolasBody">
-          <tr><td colspan="8" style="text-align:center;color:#888;padding:20px">Cargando...</td></tr>
-        </tbody>
-      </table>
+
+    <!-- Tab 1: Cartolas Enviadas -->
+    <div id="impTab1">
+      <div class="form-card" style="margin-bottom:10px">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+          <div class="field" style="flex:2;min-width:200px">
+            <label>Buscar</label>
+            <input type="text" id="impCartolasSearch" placeholder="Correlativo, concesionario, período..." oninput="renderImpCartolas()" style="width:100%">
+          </div>
+          <div class="field" style="flex:1;min-width:150px">
+            <label>Período</label>
+            <select id="impCartolasPeriodo" onchange="renderImpCartolas()">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div>
+            <button class="btn btn-secondary" onclick="document.getElementById('impCartolasSearch').value='';document.getElementById('impCartolasPeriodo').value='';renderImpCartolas()">Limpiar</button>
+          </div>
+        </div>
+        <div id="impCartolasCount" style="font-size:11px;color:#546E7A;margin-top:6px"></div>
+      </div>
+      <div class="form-card" style="padding:0;overflow:hidden">
+        <table class="data-table" id="impCartolasTable">
+          <thead>
+            <tr>
+              <th>Correlativo</th>
+              <th>Fecha Envío</th>
+              <th>Concesionario</th>
+              <th>Período</th>
+              <th style="text-align:right">Neto</th>
+              <th style="text-align:right">IVA</th>
+              <th style="text-align:right">Total Bruto</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="impCartolasBody">
+            <tr><td colspan="8" style="text-align:center;color:#888;padding:20px">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 2: Estado Cartolas -->
+    <div id="impTab2" style="display:none">
+      <div class="form-card" style="padding:0;overflow:hidden">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Correlativo</th>
+              <th>Concesionario</th>
+              <th>Período</th>
+              <th style="text-align:right">Total Bruto</th>
+              <th style="text-align:center">Facturada</th>
+              <th>Fecha Factura</th>
+              <th style="text-align:center">Pagada</th>
+              <th>Fecha Pago</th>
+            </tr>
+          </thead>
+          <tbody id="estadoCartolasBody">
+            <tr><td colspan="8" style="text-align:center;color:#888;padding:20px">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 3: Resumen Cartolas -->
+    <div id="impTab3" style="display:none">
+      <div id="resumenCartolasSummary" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px"></div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+        <button class="btn btn-secondary" onclick="exportResumenExcel()">📊 Exportar a Excel</button>
+      </div>
+      <div class="form-card" style="padding:0;overflow:hidden">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th style="text-align:center">Emitidas</th>
+              <th style="text-align:center">Enviadas</th>
+              <th style="text-align:center">Pend. Envío</th>
+              <th style="text-align:center">Facturadas</th>
+              <th style="text-align:center">Fact. Pendiente</th>
+              <th style="text-align:center">Pagadas</th>
+              <th style="text-align:center">Pend. Pago</th>
+            </tr>
+          </thead>
+          <tbody id="resumenCartolasBody">
+            <tr><td colspan="8" style="text-align:center;color:#888;padding:20px">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -3424,6 +3484,215 @@ function anularEnvioCartola(id){
   renderImpCartolas();
   renderRevisionCartolas();
   showToast('✓ Envío anulado correctamente');
+}
+
+// ========== TABS CARTOLAS ENVIADAS ==========
+function switchImpCartolaTab(tab){
+  [1,2,3].forEach(i => {
+    const t = document.getElementById('impTab'+i);
+    const b = document.getElementById('impTabBtn'+i);
+    if(t) t.style.display = i===tab ? '' : 'none';
+    if(b){
+      b.style.color = i===tab ? '#0141A2' : '#546E7A';
+      b.style.borderBottom = i===tab ? '3px solid #0141A2' : '3px solid transparent';
+    }
+  });
+  if(tab===1) renderImpCartolas();
+  else if(tab===2) renderEstadoCartolas();
+  else if(tab===3) renderResumenCartolas();
+}
+
+function renderEstadoCartolas(){
+  const enviadas = getCartolasEnviadas();
+  const tbody = document.getElementById('estadoCartolasBody');
+  if(!tbody) return;
+  if(!enviadas.length){
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay cartolas enviadas.</td></tr>';
+    return;
+  }
+  const sorted = [...enviadas].sort((a,b) => new Date(b.fechaEnvio)-new Date(a.fechaEnvio));
+  tbody.innerHTML = sorted.map(e => `
+    <tr>
+      <td style="font-weight:700;color:#1565C0;font-size:12px">${e.correlativo}</td>
+      <td style="font-size:12px">${e.concesionario}</td>
+      <td style="font-size:12px">${e.mes}</td>
+      <td style="text-align:right;font-weight:700;font-size:12px">${fmtCLP(e.total)}</td>
+      <td style="text-align:center">
+        <input type="checkbox" ${e.facturada?'checked':''} onchange="toggleFacturada(${e.id},this.checked)" style="width:16px;height:16px;cursor:pointer">
+      </td>
+      <td>
+        <input type="date" value="${e.fechaFactura||''}" onchange="setFechaFactura(${e.id},this.value)" style="font-size:11px;border:1px solid #ccc;border-radius:4px;padding:2px 6px" ${e.facturada?'':'disabled'}>
+      </td>
+      <td style="text-align:center">
+        <input type="checkbox" ${e.pagada?'checked':''} onchange="togglePagada(${e.id},this.checked)" style="width:16px;height:16px;cursor:pointer" ${e.facturada?'':'disabled'}>
+      </td>
+      <td>
+        <input type="date" value="${e.fechaPago||''}" onchange="setFechaPago(${e.id},this.value)" style="font-size:11px;border:1px solid #ccc;border-radius:4px;padding:2px 6px" ${e.pagada?'':'disabled'}>
+      </td>
+    </tr>`).join('');
+}
+
+function toggleFacturada(id, checked){
+  const enviadas = getCartolasEnviadas();
+  const e = enviadas.find(x => x.id === id);
+  if(!e) return;
+  e.facturada = checked;
+  if(checked && !e.fechaFactura) e.fechaFactura = new Date().toISOString().slice(0,10);
+  if(!checked){ e.fechaFactura = ''; e.pagada = false; e.fechaPago = ''; }
+  saveCartolasEnviadas(enviadas);
+  renderEstadoCartolas();
+  showToast(checked ? '✓ Marcada como facturada' : 'Facturada desmarcada');
+}
+function setFechaFactura(id, fecha){
+  const enviadas = getCartolasEnviadas();
+  const e = enviadas.find(x => x.id === id);
+  if(!e) return;
+  e.fechaFactura = fecha;
+  saveCartolasEnviadas(enviadas);
+}
+function togglePagada(id, checked){
+  const enviadas = getCartolasEnviadas();
+  const e = enviadas.find(x => x.id === id);
+  if(!e) return;
+  e.pagada = checked;
+  if(checked && !e.fechaPago) e.fechaPago = new Date().toISOString().slice(0,10);
+  if(!checked) e.fechaPago = '';
+  saveCartolasEnviadas(enviadas);
+  renderEstadoCartolas();
+  showToast(checked ? '✓ Marcada como pagada' : 'Pago desmarcado');
+}
+function setFechaPago(id, fecha){
+  const enviadas = getCartolasEnviadas();
+  const e = enviadas.find(x => x.id === id);
+  if(!e) return;
+  e.fechaPago = fecha;
+  saveCartolasEnviadas(enviadas);
+}
+
+function abrevPeriodo(mesDisplay){
+  const m={enero:'ene',febrero:'feb',marzo:'mar',abril:'abr',mayo:'may',junio:'jun',julio:'jul',agosto:'ago',septiembre:'sep',octubre:'oct',noviembre:'nov',diciembre:'dic'};
+  const match=(mesDisplay||'').toLowerCase().match(/(\w+)\s+de\s+(\d{4})/);
+  if(!match) return mesDisplay||'';
+  return (m[match[1]]||match[1])+'-'+match[2].slice(2);
+}
+
+function _buildResumenRows(){
+  const cartolas = getCartolasData();
+  const enviadas = getCartolasEnviadas();
+  // Group cartolas by concesionario+mes → compute subtotal
+  const emitMap = {};
+  cartolas.forEach(r => {
+    const key = (r.concesionario||'SIN CONC')+'|'+(r.mesDisplay||'');
+    if(!emitMap[key]) emitMap[key]={conc:r.concesionario,mes:r.mesDisplay,rows:[]};
+    emitMap[key].rows.push(r);
+  });
+  const emitList = Object.values(emitMap).map(g => {
+    const comis = g.rows.filter(r=>r.movimiento==='COMISION'&&r.estadoComision==='A PAGAR').reduce((s,r)=>s+(r.comisionBruta||0),0);
+    const anu   = g.rows.filter(r=>r.movimiento==='ANULACION').reduce((s,r)=>s+(r.comisionBruta||0),0);
+    const prep  = g.rows.filter(r=>r.movimiento==='PREPAGO').reduce((s,r)=>s+(r.comisionBruta||0),0);
+    return {conc:g.conc, mes:g.mes, subtotal: comis-anu-prep};
+  });
+  const allPeriodos = [...new Set([...emitList.map(e=>e.mes),...enviadas.map(e=>e.mes)].filter(Boolean))].sort((a,b)=>parseMesSubject(a)<parseMesSubject(b)?-1:1);
+  return allPeriodos.map(mes => {
+    const emits = emitList.filter(e=>e.mes===mes);
+    const envs  = enviadas.filter(e=>e.mes===mes);
+    const emit_count  = emits.length;
+    const emit_total  = emits.reduce((s,e)=>s+e.subtotal,0);
+    const env_count   = envs.length;
+    const env_total   = envs.reduce((s,e)=>s+(e.total||0),0);
+    const fact_count  = envs.filter(e=>e.facturada).length;
+    const fact_total  = envs.filter(e=>e.facturada).reduce((s,e)=>s+(e.total||0),0);
+    const pag_count   = envs.filter(e=>e.pagada).length;
+    const pag_total   = envs.filter(e=>e.pagada).reduce((s,e)=>s+(e.total||0),0);
+    return {
+      mes, emit_count, emit_total, env_count, env_total,
+      pend_env_count: Math.max(0,emit_count-env_count),
+      pend_env_total: Math.max(0,emit_total-env_total),
+      fact_count, fact_total,
+      fact_pend_count: Math.max(0,env_count-fact_count),
+      fact_pend_total: Math.max(0,env_total-fact_total),
+      pag_count, pag_total,
+      pend_pago_count: Math.max(0,fact_count-pag_count),
+      pend_pago_total: Math.max(0,fact_total-pag_total)
+    };
+  });
+}
+
+function renderResumenCartolas(){
+  const rows = _buildResumenRows();
+  // Summary cards
+  const sum = (key) => rows.reduce((s,r)=>s+r[key],0);
+  const pend_env_n  = sum('pend_env_count');
+  const pend_env_m  = sum('pend_env_total');
+  const fact_pend_n = sum('fact_pend_count');
+  const fact_pend_m = sum('fact_pend_total');
+  const pend_pago_n = sum('pend_pago_count');
+  const pend_pago_m = sum('pend_pago_total');
+  const total_n     = pend_env_n + fact_pend_n + pend_pago_n;
+  const total_m     = pend_env_m + fact_pend_m + pend_pago_m;
+
+  const fmtMS = v => 'M$ '+Math.round(v/1000).toLocaleString('es-CL');
+  const card = (title, n, m, color) =>
+    `<div style="flex:1;min-width:170px;background:white;border-radius:8px;border-left:4px solid ${color};border:1px solid #E0E0E0;border-left-width:4px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.07)">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${color};margin-bottom:8px;letter-spacing:0.5px">${title}</div>
+      <div style="font-size:26px;font-weight:800;color:${color};line-height:1">${n}</div>
+      <div style="font-size:12px;font-weight:600;color:#78909C;margin-top:6px">${fmtMS(m)}</div>
+    </div>`;
+
+  const summaryEl = document.getElementById('resumenCartolasSummary');
+  if(summaryEl){
+    summaryEl.innerHTML =
+      card('Pendientes de Envío', pend_env_n,  pend_env_m,  '#E65100') +
+      card('Facturas Pendientes', fact_pend_n, fact_pend_m, '#1565C0') +
+      card('Pendientes de Pago',  pend_pago_n, pend_pago_m, '#B71C1C') +
+      card('Total Pendiente',     total_n,     total_m,     '#424242');
+  }
+
+  const tbody = document.getElementById('resumenCartolasBody');
+  if(!tbody) return;
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay datos de cartolas.</td></tr>';
+    return;
+  }
+  const cell = (n, m, warnColor) => {
+    const color = (warnColor && n>0) ? warnColor : (n===0?'#43A047':'#37474F');
+    return `<span style="color:${color};font-weight:${n>0?'700':'400'}">${n}<br><span style="font-size:10px;font-weight:400;color:#78909C">${fmtMS(m)}</span></span>`;
+  };
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td style="font-weight:700;color:#1565C0;font-size:12px;white-space:nowrap">${abrevPeriodo(r.mes)}</td>
+      <td style="text-align:center;font-size:11px">${cell(r.emit_count,r.emit_total,null)}</td>
+      <td style="text-align:center;font-size:11px">${cell(r.env_count,r.env_total,null)}</td>
+      <td style="text-align:center;font-size:11px">${cell(r.pend_env_count,r.pend_env_total,'#E65100')}</td>
+      <td style="text-align:center;font-size:11px">${cell(r.fact_count,r.fact_total,null)}</td>
+      <td style="text-align:center;font-size:11px">${cell(r.fact_pend_count,r.fact_pend_total,'#1565C0')}</td>
+      <td style="text-align:center;font-size:11px">${cell(r.pag_count,r.pag_total,null)}</td>
+      <td style="text-align:center;font-size:11px">${cell(r.pend_pago_count,r.pend_pago_total,'#B71C1C')}</td>
+    </tr>`).join('');
+}
+
+function exportResumenExcel(){
+  const rows = _buildResumenRows();
+  if(!rows.length){ showToast('No hay datos para exportar'); return; }
+  const fmtMS = v => Math.round(v/1000);
+  const headers = ['Período','Emitidas N°','Emitidas M$','Enviadas N°','Enviadas M$','Pend.Envío N°','Pend.Envío M$','Facturadas N°','Facturadas M$','Fact.Pend N°','Fact.Pend M$','Pagadas N°','Pagadas M$','Pend.Pago N°','Pend.Pago M$'];
+  const dataRows = rows.map(r => [
+    abrevPeriodo(r.mes),
+    r.emit_count, fmtMS(r.emit_total),
+    r.env_count,  fmtMS(r.env_total),
+    r.pend_env_count, fmtMS(r.pend_env_total),
+    r.fact_count, fmtMS(r.fact_total),
+    r.fact_pend_count, fmtMS(r.fact_pend_total),
+    r.pag_count,  fmtMS(r.pag_total),
+    r.pend_pago_count, fmtMS(r.pend_pago_total)
+  ]);
+  const csv = [headers, ...dataRows].map(row => row.map(v => typeof v==='string'&&v.includes(',') ? '"'+v+'"' : v).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'resumen_cartolas_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('✓ Archivo descargado');
 }
 
 // ========== CARTOLA PDF & EMAIL ==========
