@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.31</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.32</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.31</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.32</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -390,11 +390,11 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
         <div class="form-row cols-3">
           <div class="field">
             <label>Nombre Cliente *</label>
-            <input type="text" id="fNombreCliente" placeholder="Nombre completo">
+            <input type="text" id="fNombreCliente" placeholder="Nombre completo" onblur="autoTitleCase(this)">
           </div>
           <div class="field">
             <label>RUT Cliente *</label>
-            <input type="text" id="fRutCliente" placeholder="12.345.678-9">
+            <input type="text" id="fRutCliente" placeholder="12.345.678-9" oninput="autoFormatRUT(this)">
           </div>
           <div class="field">
             <label>Fecha Emisión</label>
@@ -1896,8 +1896,8 @@ function buildCorregirForm(c){
     <div class="form-card">
       <div class="form-card-title">Editar Carta N° ${c.opCarta}</div>
       <div class="form-row cols-3">
-        <div class="field"><label>Nombre Cliente</label><input type="text" id="cNombreCliente" value="${c.cliente}"></div>
-        <div class="field"><label>RUT Cliente</label><input type="text" id="cRutCliente" value="${c.rutCliente}"></div>
+        <div class="field"><label>Nombre Cliente</label><input type="text" id="cNombreCliente" value="${toTitleCase(c.cliente)}" onblur="autoTitleCase(this)"></div>
+        <div class="field"><label>RUT Cliente</label><input type="text" id="cRutCliente" value="${formatRUT(c.rutCliente)}" oninput="autoFormatRUT(this)"></div>
         <div class="field"><label>Plazo</label>
           <select id="cPlazo" onchange="calcCorregirPart('${c.id}')">
             ${Array.from({length:67},(_,i)=>i+6).map(p=>`<option value="${p}" ${p==c.plazo?'selected':''}>${p}</option>`).join('')}
@@ -2012,8 +2012,8 @@ function grabarCorreccion(id){
     return; 
   }
   // Update fields
-  c.cliente = document.getElementById('cNombreCliente').value.trim() || c.cliente;
-  c.rutCliente = document.getElementById('cRutCliente').value.trim() || c.rutCliente;
+  c.cliente = toTitleCase(document.getElementById('cNombreCliente').value.trim()) || c.cliente;
+  c.rutCliente = formatRUT(document.getElementById('cRutCliente').value.trim()) || c.rutCliente;
   c.plazo = document.getElementById('cPlazo').value;
   c.tipoVehiculo = document.getElementById('cTipoVehiculo').value.trim();
   c.marca = document.getElementById('cMarca').value.trim();
@@ -4335,6 +4335,28 @@ function fmtCLP(n){
   return '$' + Math.round(Number(n)).toLocaleString('es-CL');
 }
 
+// Convierte texto a Nombre Propio (Title Case): "JUAN PEDRO GARCIA" → "Juan Pedro Garcia"
+function toTitleCase(str){
+  return (str||'').toLowerCase().replace(/(?:^|[\s\-\/])\S/g, c => c.toUpperCase());
+}
+
+// Formatea RUT chileno: "12345690" → "1.234.569-0", "12345678K" → "12.345.678-K"
+function formatRUT(raw){
+  const clean = (raw||'').replace(/[\.\-\s]/g,'').toUpperCase();
+  if(clean.length < 2) return clean;
+  const verifier = clean.slice(-1);
+  const body = clean.slice(0,-1).replace(/[^0-9]/g,'');
+  if(!body) return clean;
+  return body.replace(/\B(?=(\d{3})+(?!\d))/g,'.') + '-' + verifier;
+}
+
+// Handlers para campos HTML
+function autoTitleCase(el){ el.value = toTitleCase(el.value); }
+function autoFormatRUT(el){
+  const clean = el.value.replace(/[\.\-\s]/g,'');
+  if(clean.length >= 2) el.value = formatRUT(el.value);
+}
+
 function fmtDate(dt){
   if(!dt) return '';
   const d = new Date(dt);
@@ -4979,8 +5001,8 @@ async function grabarCarta(){
     ejecutivoNombre: ejecutivos[parseInt(ej)].nombre,
     ejecutivoMail: ejecutivos[parseInt(ej)].mail,
     ejecutivoTel: ejecutivos[parseInt(ej)].tel,
-    cliente: cliente,
-    rutCliente: rutCliente,
+    cliente: toTitleCase(cliente),
+    rutCliente: formatRUT(rutCliente),
     tipoVehiculo: document.getElementById('fTipoVehiculo').value,
     marca: marca,
     modelo: document.getElementById('fModelo').value,
@@ -5505,7 +5527,7 @@ function generatePDF(c, forPrint, fromRev){
     <!-- CLIENTE -->
     <div class="sec-title">DATOS DEL CLIENTE</div>
     <table class="data-tbl">
-      <tr><td class="lbl" style="width:13%">NOMBRE</td><td class="val" style="width:37%">${c.cliente||''}</td><td class="lbl" style="width:13%">RUT</td><td class="val">${c.rutCliente||''}</td></tr>
+      <tr><td class="lbl" style="width:13%">NOMBRE</td><td class="val" style="width:37%">${toTitleCase(c.cliente||'')}</td><td class="lbl" style="width:13%">RUT</td><td class="val">${formatRUT(c.rutCliente||'')}</td></tr>
     </table>
     <!-- VEHICULO -->
     <div class="sec-title">DATOS DEL VEHÍCULO</div>
