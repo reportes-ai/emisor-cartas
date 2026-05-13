@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.27</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.28</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.27</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.28</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -1128,10 +1128,24 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
 
     <!-- Tab 3: Resumen Cartolas -->
     <div id="impTab3" style="display:none">
-      <div id="resumenCartolasSummary" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px"></div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-        <button class="btn btn-secondary" onclick="exportResumenExcel()">📊 Exportar a Excel</button>
+      <!-- Selector de períodos -->
+      <div class="form-card" style="margin-bottom:12px;padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <strong style="font-size:12px;color:#37474F;white-space:nowrap">Períodos:</strong>
+          <div id="resumenPeriodoFiltros" style="display:flex;flex-wrap:wrap;gap:8px;flex:1"></div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px" onclick="selectAllPeriodos(true)">Todos</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px" onclick="selectAllPeriodos(false)">Ninguno</button>
+          </div>
+        </div>
       </div>
+      <!-- Tarjetas resumen -->
+      <div id="resumenCartolasSummary" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px"></div>
+      <!-- Botón exportar -->
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+        <button class="btn btn-success" style="font-size:13px;padding:8px 20px" onclick="exportResumenExcel()">📊 Exportar a Excel (.xlsx)</button>
+      </div>
+      <!-- Tabla resumen -->
       <div class="form-card" style="padding:0;overflow:hidden">
         <table class="data-table">
           <thead>
@@ -3618,10 +3632,38 @@ function _buildResumenRows(){
   });
 }
 
+function getSelectedPeriodos(){
+  return [...document.querySelectorAll('.resumen-periodo-chk:checked')].map(c=>c.value);
+}
+function selectAllPeriodos(val){
+  document.querySelectorAll('.resumen-periodo-chk').forEach(c=>c.checked=val);
+  renderResumenCartolas();
+}
+
 function renderResumenCartolas(){
-  const rows = _buildResumenRows();
+  const allRows = _buildResumenRows();
+  // Populate period checkboxes (keep existing checked state)
+  const filtrosEl = document.getElementById('resumenPeriodoFiltros');
+  if(filtrosEl){
+    const allPeriodos = allRows.map(r=>r.mes);
+    const prevSel = new Set(getSelectedPeriodos());
+    // First render: check all; subsequent: keep state
+    const isFirst = filtrosEl.innerHTML === '';
+    filtrosEl.innerHTML = allPeriodos.map(mes => {
+      const checked = isFirst || prevSel.has(mes) ? 'checked' : '';
+      const abrev = abrevPeriodo(mes);
+      return `<label style="display:inline-flex;align-items:center;gap:4px;background:#F5F5F5;border:1px solid #E0E0E0;border-radius:20px;padding:3px 10px;cursor:pointer;font-size:12px;font-weight:600;color:#37474F">
+        <input type="checkbox" class="resumen-periodo-chk" value="${mes}" ${checked} onchange="renderResumenCartolas()" style="cursor:pointer">
+        ${abrev}
+      </label>`;
+    }).join('');
+  }
+
+  const sel = new Set(getSelectedPeriodos());
+  const rows = allRows.filter(r => sel.has(r.mes));
+
   // Summary cards
-  const sum = (key) => rows.reduce((s,r)=>s+r[key],0);
+  const sum = key => rows.reduce((s,r)=>s+r[key],0);
   const pend_env_n  = sum('pend_env_count');
   const pend_env_m  = sum('pend_env_total');
   const fact_pend_n = sum('fact_pend_count');
@@ -3651,7 +3693,7 @@ function renderResumenCartolas(){
   const tbody = document.getElementById('resumenCartolasBody');
   if(!tbody) return;
   if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay datos de cartolas.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay datos para los períodos seleccionados.</td></tr>';
     return;
   }
   const cell = (n, m, warnColor) => {
@@ -3672,27 +3714,72 @@ function renderResumenCartolas(){
 }
 
 function exportResumenExcel(){
-  const rows = _buildResumenRows();
-  if(!rows.length){ showToast('No hay datos para exportar'); return; }
-  const fmtMS = v => Math.round(v/1000);
-  const headers = ['Período','Emitidas N°','Emitidas M$','Enviadas N°','Enviadas M$','Pend.Envío N°','Pend.Envío M$','Facturadas N°','Facturadas M$','Fact.Pend N°','Fact.Pend M$','Pagadas N°','Pagadas M$','Pend.Pago N°','Pend.Pago M$'];
-  const dataRows = rows.map(r => [
+  if(typeof XLSX === 'undefined'){ showToast('Error: librería Excel no disponible'); return; }
+  const sel = new Set(getSelectedPeriodos());
+  if(!sel.size){ showToast('Selecciona al menos un período'); return; }
+
+  const allRows = _buildResumenRows();
+  const rows = allRows.filter(r => sel.has(r.mes));
+  if(!rows.length){ showToast('No hay datos para los períodos seleccionados'); return; }
+
+  const enviadas = getCartolasEnviadas().filter(e => sel.has(e.mes));
+  const fmtDate = v => v ? v : '';
+  const fmtNum  = v => Math.round(v||0);
+
+  // ── HOJA 1: Resumen por período ──────────────────────────────────────────
+  const resHdr = [
+    'Período','Emitidas N°','Emitidas M$','Enviadas N°','Enviadas M$',
+    'Pend.Envío N°','Pend.Envío M$','Facturadas N°','Facturadas M$',
+    'Fact.Pend N°','Fact.Pend M$','Pagadas N°','Pagadas M$',
+    'Pend.Pago N°','Pend.Pago M$'
+  ];
+  const resData = rows.map(r => [
     abrevPeriodo(r.mes),
-    r.emit_count, fmtMS(r.emit_total),
-    r.env_count,  fmtMS(r.env_total),
-    r.pend_env_count, fmtMS(r.pend_env_total),
-    r.fact_count, fmtMS(r.fact_total),
-    r.fact_pend_count, fmtMS(r.fact_pend_total),
-    r.pag_count,  fmtMS(r.pag_total),
-    r.pend_pago_count, fmtMS(r.pend_pago_total)
+    r.emit_count, Math.round(r.emit_total/1000),
+    r.env_count,  Math.round(r.env_total/1000),
+    r.pend_env_count,  Math.round(r.pend_env_total/1000),
+    r.fact_count,      Math.round(r.fact_total/1000),
+    r.fact_pend_count, Math.round(r.fact_pend_total/1000),
+    r.pag_count,       Math.round(r.pag_total/1000),
+    r.pend_pago_count, Math.round(r.pend_pago_total/1000)
   ]);
-  const csv = [headers, ...dataRows].map(row => row.map(v => typeof v==='string'&&v.includes(',') ? '"'+v+'"' : v).join(',')).join('\n');
-  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'resumen_cartolas_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click(); URL.revokeObjectURL(url);
-  showToast('✓ Archivo descargado');
+  const wsResumen = XLSX.utils.aoa_to_sheet([resHdr, ...resData]);
+  // Anchos columna resumen
+  wsResumen['!cols'] = [{wch:10},...Array(14).fill({wch:13})];
+
+  // ── HOJA 2: Detalle de cartolas ──────────────────────────────────────────
+  const detHdr = [
+    'Correlativo','Fecha Envío','Concesionario','Período',
+    'Neto ($)','IVA ($)','Total Bruto ($)','M$ Neto','M$ Total',
+    'Facturada','Fecha Factura','Pagada','Fecha Pago','Estado'
+  ];
+  const detData = [...enviadas].sort((a,b)=>a.mes<b.mes?-1:a.mes>b.mes?1:(a.correlativo<b.correlativo?-1:1)).map(e => {
+    const estado = e.pagada ? 'Pagada' : e.facturada ? 'Facturada' : 'Pendiente Factura';
+    return [
+      e.correlativo,
+      e.fechaEnvio ? new Date(e.fechaEnvio).toLocaleDateString('es-CL') : '',
+      e.concesionario,
+      abrevPeriodo(e.mes),
+      fmtNum(e.neto), fmtNum(e.iva), fmtNum(e.total),
+      Math.round((e.neto||0)/1000), Math.round((e.total||0)/1000),
+      e.facturada ? 'Sí' : 'No',
+      fmtDate(e.fechaFactura),
+      e.pagada ? 'Sí' : 'No',
+      fmtDate(e.fechaPago),
+      estado
+    ];
+  });
+  const wsDetalle = XLSX.utils.aoa_to_sheet([detHdr, ...detData]);
+  wsDetalle['!cols'] = [{wch:13},{wch:13},{wch:28},{wch:10},{wch:13},{wch:13},{wch:14},{wch:10},{wch:10},{wch:11},{wch:14},{wch:9},{wch:14},{wch:18}];
+
+  // ── Armar y descargar workbook ────────────────────────────────────────────
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+  XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle Cartolas');
+  const fecha = new Date().toISOString().slice(0,10);
+  const periodoStr = rows.length===1 ? abrevPeriodo(rows[0].mes) : rows.length+'_periodos';
+  XLSX.writeFile(wb, `Resumen_Cartolas_${periodoStr}_${fecha}.xlsx`);
+  showToast('✓ Excel descargado correctamente');
 }
 
 // ========== CARTOLA PDF & EMAIL ==========
