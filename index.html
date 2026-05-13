@@ -92,7 +92,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
 .field .value-display { padding: 6px 8px; background: #F5F5F5; border: 1px solid var(--gray-border); border-radius: 4px; font-size: 12px; color: #546E7A; }
 
 /* Action buttons */
-.actions-bar { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.actions-bar { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; position: relative; z-index: 10; }
 .btn { padding: 8px 18px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; }
 .btn-primary { background: var(--blue); color: white; }
 .btn-primary:hover { background: var(--blue-dark); }
@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.30</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.31</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.30</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.31</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -1885,6 +1885,8 @@ function corregirCarta(id){
   alertDiv.innerHTML = '<strong>Motivo del rechazo:</strong> ' + (c.motivoRechazo || '-') + 
     '<br><small>Rechazado por: ' + (c.rechazadoPorNombre || '-') + ' — ' + fmtDateTime(c.fechaRechazo) + '</small>';
   // Build an edit form inside corregirFormWrap
+  _corregirPartManual = false;
+  rawSaldoCorr = c.saldo || 0;
   buildCorregirForm(c);
 }
 
@@ -1941,10 +1943,11 @@ function buildCorregirForm(c){
     </div>
     <div class="form-card">
       <div class="form-card-title">Participación del Dealer</div>
+      <div style="font-size:11px;color:#546E7A;margin-bottom:8px">Edita el <strong>Valor Bruto</strong> para ajustar la participación. Neto e IVA se recalculan automáticamente.</div>
       <div class="form-row cols-3">
-        <div class="field"><label>Valor Neto</label><input type="text" id="cPartNeto" value="$${Math.round(c.partNeto).toLocaleString('es-CL')}" readonly style="color:#546E7A"></div>
-        <div class="field"><label>IVA (19%)</label><input type="text" id="cPartIVA" value="$${Math.round(c.partIVA).toLocaleString('es-CL')}" readonly style="color:#546E7A"></div>
-        <div class="field"><label>Valor Bruto</label><input type="text" id="cPartBruto" value="$${Math.round(c.partBruto).toLocaleString('es-CL')}" readonly style="color:#546E7A"></div>
+        <div class="field"><label>Valor Neto</label><input type="text" id="cPartNeto" value="$${Math.round(c.partNeto).toLocaleString('es-CL')}" readonly style="color:#546E7A;background:#F5F5F5"></div>
+        <div class="field"><label>IVA (19%)</label><input type="text" id="cPartIVA" value="$${Math.round(c.partIVA).toLocaleString('es-CL')}" readonly style="color:#546E7A;background:#F5F5F5"></div>
+        <div class="field"><label>Valor Bruto</label><input type="text" id="cPartBruto" value="$${Math.round(c.partBruto).toLocaleString('es-CL')}" oninput="onCorregirPartBrutoChange()" style="border-color:#0141A2;font-weight:700"></div>
       </div>
     </div>
     <div class="actions-bar">
@@ -1959,6 +1962,16 @@ function buildCorregirForm(c){
 }
 
 let rawSaldoCorr = 0;
+let _corregirPartManual = false; // true when user manually edits partBruto
+
+function onCorregirPartBrutoChange(){
+  _corregirPartManual = true;
+  const bruto = parseInt(String(document.getElementById('cPartBruto').value).replace(/[^0-9]/g,'')) || 0;
+  const neto = Math.round(bruto / 1.19);
+  const iva = bruto - neto;
+  document.getElementById('cPartNeto').value = '$' + neto.toLocaleString('es-CL');
+  document.getElementById('cPartIVA').value = '$' + iva.toLocaleString('es-CL');
+}
 
 function calcCorregirSaldo(cartaId){
   const precio = parseFloat(document.getElementById('cPrecioVenta').value)||0;
@@ -1969,6 +1982,7 @@ function calcCorregirSaldo(cartaId){
 }
 
 function calcCorregirPart(cartaId){
+  if(_corregirPartManual) return; // user has manually set the value, don't overwrite
   const c = cartas.find(x => x.id === parseInt(cartaId));
   if(!c) return;
   const plazo = document.getElementById('cPlazo').value;
