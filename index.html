@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.28</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.29</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.28</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.29</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -1105,6 +1105,24 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
 
     <!-- Tab 2: Estado Cartolas -->
     <div id="impTab2" style="display:none">
+      <div class="form-card" style="margin-bottom:10px">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+          <div class="field" style="flex:2;min-width:200px">
+            <label>Buscar</label>
+            <input type="text" id="estadoCartolasSearch" placeholder="Correlativo, concesionario, período..." oninput="renderEstadoCartolas()" style="width:100%">
+          </div>
+          <div class="field" style="flex:1;min-width:150px">
+            <label>Período</label>
+            <select id="estadoCartolasPeriodo" onchange="renderEstadoCartolas()">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div>
+            <button class="btn btn-secondary" onclick="document.getElementById('estadoCartolasSearch').value='';document.getElementById('estadoCartolasPeriodo').value='';renderEstadoCartolas()">Limpiar</button>
+          </div>
+        </div>
+        <div id="estadoCartolasCount" style="font-size:11px;color:#546E7A;margin-top:6px"></div>
+      </div>
       <div class="form-card" style="padding:0;overflow:hidden">
         <table class="data-table">
           <thead>
@@ -3520,12 +3538,37 @@ function renderEstadoCartolas(){
   const enviadas = getCartolasEnviadas();
   const tbody = document.getElementById('estadoCartolasBody');
   if(!tbody) return;
-  if(!enviadas.length){
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay cartolas enviadas.</td></tr>';
+
+  // Poblar select de períodos
+  const periodoSel = document.getElementById('estadoCartolasPeriodo');
+  if(periodoSel){
+    const periodos = [...new Set(enviadas.map(e=>e.mes).filter(Boolean))].sort();
+    const prev = periodoSel.value;
+    periodoSel.innerHTML = '<option value="">Todos</option>' + periodos.map(p=>`<option ${p===prev?'selected':''}>${p}</option>`).join('');
+  }
+
+  // Aplicar filtros
+  const q = (document.getElementById('estadoCartolasSearch')?.value || '').toLowerCase().trim();
+  const periodo = document.getElementById('estadoCartolasPeriodo')?.value || '';
+  const sorted = [...enviadas].sort((a,b) => new Date(b.fechaEnvio)-new Date(a.fechaEnvio));
+  const list = sorted.filter(e => {
+    if(periodo && e.mes !== periodo) return false;
+    if(q){
+      const estado = e.pagada?'pagada':e.facturada?'facturada':'pendiente';
+      const txt = [e.correlativo, e.concesionario, e.mes, estado, e.fechaFactura||'', e.fechaPago||''].join(' ').toLowerCase();
+      if(!txt.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const countEl = document.getElementById('estadoCartolasCount');
+  if(countEl) countEl.textContent = list.length + ' cartola(s) encontrada(s)';
+
+  if(!list.length){
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay cartolas con los filtros seleccionados.</td></tr>';
     return;
   }
-  const sorted = [...enviadas].sort((a,b) => new Date(b.fechaEnvio)-new Date(a.fechaEnvio));
-  tbody.innerHTML = sorted.map(e => `
+  tbody.innerHTML = list.map(e => `
     <tr>
       <td style="font-weight:700;color:#1565C0;font-size:12px">${e.correlativo}</td>
       <td style="font-size:12px">${e.concesionario}</td>
