@@ -206,7 +206,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
     <div class="logo-big"><img id="logoLogin" src="" alt="AutoFácil" style="height:48px;object-fit:contain;display:block;margin:0 auto"></div>
     <h2>Generador de Cartas de Aprobación</h2>
     <h3>Ingrese sus credenciales</h3>
-    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.29</div>
+    <div style="font-size:11px;color:#90CAF9;margin-top:4px">V5.30</div>
     <div class="form-group">
       <label>Usuario</label>
       <input type="text" id="loginUser" placeholder="usuario" value="admin">
@@ -226,7 +226,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); c
   <div class="header no-print">
     <div class="header-logo" style="display:flex;align-items:center;gap:8px">
         <img id="logoHeader" src="" alt="AutoFácil" style="height:32px;object-fit:contain">
-        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.29</span>
+        <span style="font-size:11px;font-weight:400;color:#90CAF9">V5.30</span>
       </div>
     <div class="header-right">
       <span class="header-user" id="headerUser"></span>
@@ -2018,6 +2018,12 @@ function grabarCorreccion(id){
   c.partNeto = parseCLP(document.getElementById('cPartNeto').value);
   c.partIVA = parseCLP(document.getElementById('cPartIVA').value);
   c.partBruto = parseCLP(document.getElementById('cPartBruto').value);
+  // Re-evaluar excepciones con los datos corregidos
+  const nuevasExcep = recalcExcepcionesFromCarta(c);
+  // Mantener solo comentarios de excepciones que siguen vigentes
+  const tiposVigentes = new Set(nuevasExcep.map(e => e.tipo));
+  c.excepciones = nuevasExcep;
+  c.excepcionesComentarios = (c.excepcionesComentarios||[]).filter(ec => tiposVigentes.has(ec.tipo));
   // Reset status to PENDIENTE for re-review
   c.status = 'PENDIENTE';
   c.motivoRechazo = null;
@@ -2673,6 +2679,81 @@ function loadUFcsv(input){
 }
 
 // ========== EXCEPCIONES ==========
+
+// Recalcula excepciones desde un objeto carta (sin depender del DOM del formulario).
+// Se usa al grabar correcciones para limpiar excepciones ya resueltas.
+function recalcExcepcionesFromCarta(c){
+  const excepciones = [];
+  const tasas = JSON.parse(localStorage.getItem('af_tasas') || '{}');
+
+  // UF
+  const uf = getUFhoy();
+  if(!uf){
+    excepciones.push({tipo:'UF', msg:'No hay valor de UF cargado. Use el Mantenedor para cargar el CSV de UF.'});
+  } else {
+    const today = new Date().toISOString().split('T')[0];
+    if(uf.date < today){
+      excepciones.push({tipo:'UF', msg:'El valor de UF utilizado (' + uf.value.toLocaleString('es-CL',{minimumFractionDigits:2}) + ') corresponde al ' + new Date(uf.date+'T12:00:00').toLocaleDateString('es-CL') + ', no al día de hoy.'});
+    }
+  }
+
+  // Tramo UF
+  const ufVal = uf ? uf.value : 0;
+  const montoUF = c.montoCreditoUF || (ufVal > 0 ? (c.saldo||0) / ufVal : 0);
+  const esTramo1 = montoUF <= 200;
+  const tasaMensualPizarra = esTramo1 ? (tasas.mensual1||0) : (tasas.mensual2||0);
+
+  // TMC vencida
+  const fechaHasta = esTramo1 ? tasas.hasta1 : tasas.hasta2;
+  const today2 = new Date().toISOString().split('T')[0];
+  if(fechaHasta && fechaHasta < today2){
+    excepciones.push({tipo:'TMC', msg:'La Tasa Máxima Convencional venció el ' + new Date(fechaHasta+'T12:00:00').toLocaleDateString('es-CL') + '. Actualice en el Mantenedor.'});
+  }
+
+  // TASA
+  const tasaCredito = c.tasaCredito || 0;
+  if(tasaMensualPizarra > 0 && tasaCredito > 0 && Math.abs(tasaCredito - tasaMensualPizarra) > 0.001){
+    const dir = tasaCredito > tasaMensualPizarra ? 'SUPERIOR' : 'INFERIOR';
+    excepciones.push({tipo:'TASA', msg:'Tasa Crédito (' + tasaCredito.toFixed(2) + '%) es ' + dir + ' a la Tasa Pizarra (' + tasaMensualPizarra.toFixed(2) + '%). Requiere aprobación.'});
+  }
+
+  // FINANCIERA
+  const plazoN = parseInt(c.plazo) || 0;
+  const saldoN = c.saldo || 0;
+  const acreedorN = (c.acreedor || '').toUpperCase();
+  if(plazoN && saldoN){
+    const dataF = getFinancieraData();
+    const rowF = dataF.find(r => plazoN >= r.desde && plazoN <= r.hasta);
+    if(rowF){
+      const afMin = typeof rowF.autofin_min === 'number' ? rowF.autofin_min : 0;
+      let afMax = rowF.autofin_max;
+      if(typeof afMax === 'string' && afMax.toUpperCase().includes('UF') && ufVal > 0) afMax = parseFloat(afMax) * ufVal;
+      const autofinOk = saldoN >= afMin && (typeof afMax !== 'number' || saldoN <= afMax);
+      const unMin = typeof rowF.unidad_min === 'number' ? rowF.unidad_min : null;
+      const unMax = typeof rowF.unidad_max === 'number' ? rowF.unidad_max : null;
+      const unidadOk = unMin !== null && saldoN >= unMin && (unMax === null || saldoN <= unMax);
+      const isUnidad = acreedorN.includes('UNIDAD');
+      if(!autofinOk && !unidadOk){
+        excepciones.push({tipo:'FINANCIERA CRÍTICA', msg:'Ninguna financiera aplica para plazo ' + plazoN + ' cuotas y saldo ' + fmtCLP(saldoN) + '.'});
+      } else if(isUnidad && !unidadOk){
+        excepciones.push({tipo:'FINANCIERA CRÍTICA', msg:'UNIDAD DE CRÉDITO no aplica. ' + (autofinOk ? 'Use AUTOFIN.' : 'Sin financiera disponible.')});
+      } else if(autofinOk && unidadOk && isUnidad){
+        excepciones.push({tipo:'FINANCIERA', msg:'AUTOFIN es Financiera Preferente para este crédito. Se ha seleccionado UNIDAD DE CRÉDITO.'});
+      }
+    }
+  }
+
+  // PARTICIPACION
+  const factor = getComisionFactor(String(plazoN), c.tipo || '');
+  const autoPartBruto = (factor > 0 && saldoN > 0) ? Math.round(saldoN * factor) : 0;
+  const manualPartBruto = c.partBruto || 0;
+  if(autoPartBruto > 0 && manualPartBruto > autoPartBruto){
+    excepciones.push({tipo:'PARTICIPACION', msg:'Participación ingresada (' + fmtCLP(manualPartBruto) + ') supera la calculada automáticamente (' + fmtCLP(autoPartBruto) + '). Requiere aprobación.'});
+  }
+
+  return excepciones;
+}
+
 function getExcepciones(){
   const excepciones = [];
 
